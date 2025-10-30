@@ -1,0 +1,177 @@
+# Authentication Examples
+# This example demonstrates various authentication methods
+
+name: "Authentication Methods Demo"
+description: "Examples of different authentication mechanisms"
+tags: ["basic", "authentication", "security"]
+
+# Test Suite with multiple authentication examples
+tests:
+  # Basic Authentication Example
+  - name: "Basic Auth Example"
+    description: "HTTP Basic Authentication"
+    request:
+      protocol: "http"
+      method: "GET"
+      url: "https://httpbin.org/basic-auth/user/pass"
+      auth:
+        type: "basic"
+        username: "user"
+        password: "pass"
+    assertions:
+      - type: "status_code"
+        expected: 200
+        message: "Should authenticate successfully"
+      - type: "json_path"
+        path: "$.authenticated"
+        expected: true
+        message: "Should be authenticated"
+
+  # Bearer Token Authentication Example
+  - name: "Bearer Token Example"
+    description: "Bearer token authentication"
+    variables:
+      auth_token: "your-bearer-token-here"
+    request:
+      protocol: "http"
+      method: "GET"
+      url: "https://httpbin.org/bearer"
+      auth:
+        type: "bearer"
+        token: "{{auth_token}}"
+    assertions:
+      - type: "status_code"
+        expected: 200
+        message: "Should authenticate with bearer token"
+      - type: "json_path"
+        path: "$.authenticated"
+        expected: true
+        message: "Should be authenticated"
+
+  # API Key Authentication Example
+  - name: "API Key Example"
+    description: "API Key in header authentication"
+    variables:
+      api_key: "your-api-key-here"
+    request:
+      protocol: "http"
+      method: "GET"
+      url: "https://httpbin.org/headers"
+      headers:
+        X-API-Key: "{{api_key}}"
+        Authorization: "ApiKey {{api_key}}"
+    assertions:
+      - type: "status_code"
+        expected: 200
+        message: "Should accept API key"
+      - type: "json_path"
+        path: "$.headers.X-Api-Key"
+        expected: "{{api_key}}"
+        message: "Should include API key in headers"
+
+  # OAuth 2.0 Client Credentials Flow Example
+  - name: "OAuth2 Client Credentials"
+    description: "OAuth 2.0 client credentials flow"
+    auth_config:
+      oauth2:
+        client_id: "{{OAUTH_CLIENT_ID}}"
+        client_secret: "{{OAUTH_CLIENT_SECRET}}"
+        token_url: "https://oauth.example.com/token"
+        scope: "read write"
+        grant_type: "client_credentials"
+    request:
+      protocol: "http"
+      method: "GET"
+      url: "https://api.example.com/protected-resource"
+      auth:
+        type: "oauth2"
+        config_ref: "oauth2"
+    assertions:
+      - type: "status_code"
+        expected: 200
+        message: "Should authenticate with OAuth2"
+
+  # JWT Token Authentication Example
+  - name: "JWT Token Example"
+    description: "JWT token authentication with validation"
+    variables:
+      jwt_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+    request:
+      protocol: "http"
+      method: "GET"
+      url: "https://httpbin.org/headers"
+      auth:
+        type: "jwt"
+        token: "{{jwt_token}}"
+        # Optional: validate token before use
+        validate: true
+        public_key_url: "https://auth.example.com/.well-known/jwks.json"
+    assertions:
+      - type: "status_code"
+        expected: 200
+        message: "Should authenticate with JWT"
+      - type: "header"
+        name: "Authorization"
+        regex: "^Bearer .+"
+        message: "Should include Bearer token in Authorization header"
+
+  # Multi-step Authentication Chain Example
+  - name: "Authentication Chain Example"
+    description: "Multi-step authentication process"
+    auth_chain:
+      # Step 1: Get session token with basic auth
+      - type: "basic"
+        username: "{{username}}"
+        password: "{{password}}"
+        request:
+          method: "POST"
+          url: "https://api.example.com/auth/login"
+        extract_token: "$.session_token"
+      
+      # Step 2: Use session token for API access
+      - type: "bearer"
+        token: "{{extracted_token}}"
+    
+    request:
+      protocol: "http"
+      method: "GET"
+      url: "https://api.example.com/user/profile"
+      auth:
+        type: "chain"
+        chain_ref: "auth_chain"
+    assertions:
+      - type: "status_code"
+        expected: 200
+        message: "Should authenticate through chain"
+
+# Global authentication configuration
+auth_config:
+  # Default timeout for auth requests
+  timeout: 10s
+  
+  # Retry configuration for auth failures
+  retry:
+    max_attempts: 3
+    delay: 1s
+    
+  # Token caching configuration
+  cache:
+    enabled: true
+    ttl: 3600s # 1 hour
+
+# Environment-specific variables
+environments:
+  development:
+    username: "dev_user"
+    password: "dev_password"
+    api_key: "dev_api_key"
+  
+  staging:
+    username: "stage_user"
+    password: "stage_password"
+    api_key: "stage_api_key"
+  
+  production:
+    username: "{{PROD_USERNAME}}"
+    password: "{{PROD_PASSWORD}}"
+    api_key: "{{PROD_API_KEY}}"

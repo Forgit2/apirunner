@@ -1,0 +1,324 @@
+# JSON Path Assertions Examples
+# This example demonstrates various JSONPath assertion patterns
+
+name: "JSONPath Assertions Showcase"
+description: "Comprehensive examples of JSON response validation using JSONPath"
+tags: ["assertions", "json", "jsonpath", "validation"]
+
+tests:
+  # Basic JSONPath Assertions
+  - name: "Basic JSONPath Assertions"
+    description: "Simple field value assertions"
+    request:
+      protocol: "http"
+      method: "GET"
+      url: "https://jsonplaceholder.typicode.com/users/1"
+    assertions:
+      # Simple field assertion
+      - type: "json_path"
+        path: "$.name"
+        expected: "Leanne Graham"
+        message: "User name should match"
+      
+      # Nested field assertion
+      - type: "json_path"
+        path: "$.address.city"
+        expected: "Gwenborough"
+        message: "User city should match"
+      
+      # Deep nested field assertion
+      - type: "json_path"
+        path: "$.address.geo.lat"
+        expected: "-37.3159"
+        message: "Latitude should match"
+
+  # Array JSONPath Assertions
+  - name: "Array JSONPath Assertions"
+    description: "Working with JSON arrays"
+    request:
+      protocol: "http"
+      method: "GET"
+      url: "https://jsonplaceholder.typicode.com/users"
+    assertions:
+      # Array length assertion
+      - type: "json_path"
+        path: "$.length"
+        expected: 10
+        message: "Should return 10 users"
+      
+      # First element assertion
+      - type: "json_path"
+        path: "$[0].name"
+        expected: "Leanne Graham"
+        message: "First user should be Leanne Graham"
+      
+      # Last element assertion
+      - type: "json_path"
+        path: "$[-1].name"
+        expected: "Clementina DuBuque"
+        message: "Last user should be Clementina DuBuque"
+      
+      # Specific index assertion
+      - type: "json_path"
+        path: "$[2].username"
+        expected: "Samantha"
+        message: "Third user username should be Samantha"
+
+  # Conditional JSONPath Assertions
+  - name: "Conditional JSONPath Assertions"
+    description: "Using filters and conditions in JSONPath"
+    request:
+      protocol: "http"
+      method: "GET"
+      url: "https://jsonplaceholder.typicode.com/posts"
+    assertions:
+      # Filter by field value
+      - type: "json_path"
+        path: "$[?(@.userId == 1)].length"
+        expected: 10
+        message: "User 1 should have 10 posts"
+      
+      # Filter by field existence
+      - type: "json_path"
+        path: "$[?(@.title)].length"
+        expected: 100
+        message: "All posts should have titles"
+      
+      # Complex filter condition
+      - type: "json_path"
+        path: "$[?(@.userId == 1 && @.id <= 5)].length"
+        expected: 5
+        message: "User 1 should have 5 posts with ID <= 5"
+
+  # Regular Expression Assertions
+  - name: "Regular Expression Assertions"
+    description: "Using regex patterns with JSONPath"
+    request:
+      protocol: "http"
+      method: "GET"
+      url: "https://jsonplaceholder.typicode.com/users/1"
+    assertions:
+      # Email format validation
+      - type: "json_path"
+        path: "$.email"
+        regex: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+        message: "Email should be in valid format"
+      
+      # Phone format validation
+      - type: "json_path"
+        path: "$.phone"
+        regex: "^[0-9\\-\\s\\(\\)\\+x\\.]+$"
+        message: "Phone should contain valid characters"
+      
+      # Website URL validation
+      - type: "json_path"
+        path: "$.website"
+        regex: "^[a-zA-Z0-9\\-\\.]+\\.[a-zA-Z]{2,}$"
+        message: "Website should be a valid domain"
+
+  # Existence and Type Assertions
+  - name: "Existence and Type Assertions"
+    description: "Checking field existence and data types"
+    request:
+      protocol: "http"
+      method: "GET"
+      url: "https://jsonplaceholder.typicode.com/users/1"
+    assertions:
+      # Field existence
+      - type: "json_path"
+        path: "$.id"
+        exists: true
+        message: "ID field should exist"
+      
+      # Field non-existence
+      - type: "json_path"
+        path: "$.password"
+        exists: false
+        message: "Password field should not exist"
+      
+      # Type assertions (using custom assertion)
+      - type: "custom"
+        name: "json_type_assertion"
+        config:
+          path: "$.id"
+          expected_type: "number"
+        message: "ID should be a number"
+      
+      - type: "custom"
+        name: "json_type_assertion"
+        config:
+          path: "$.name"
+          expected_type: "string"
+        message: "Name should be a string"
+
+  # Range and Comparison Assertions
+  - name: "Range and Comparison Assertions"
+    description: "Numeric comparisons and ranges"
+    request:
+      protocol: "http"
+      method: "GET"
+      url: "https://jsonplaceholder.typicode.com/users"
+    assertions:
+      # Numeric range assertion
+      - type: "json_path"
+        path: "$.length"
+        range: [5, 15]
+        message: "Should return between 5 and 15 users"
+      
+      # Greater than assertion
+      - type: "json_path"
+        path: "$[0].id"
+        greater_than: 0
+        message: "User ID should be greater than 0"
+      
+      # Less than assertion
+      - type: "json_path"
+        path: "$[0].id"
+        less_than: 100
+        message: "User ID should be less than 100"
+
+  # Multiple Value Assertions
+  - name: "Multiple Value Assertions"
+    description: "Checking against multiple possible values"
+    request:
+      protocol: "http"
+      method: "GET"
+      url: "https://jsonplaceholder.typicode.com/users/1"
+    assertions:
+      # One of multiple values
+      - type: "json_path"
+        path: "$.address.zipcode"
+        one_of: ["92998-3874", "90210", "12345"]
+        message: "Zipcode should be one of the valid values"
+      
+      # Not one of values
+      - type: "json_path"
+        path: "$.username"
+        not_one_of: ["admin", "root", "test"]
+        message: "Username should not be a reserved name"
+
+  # Complex Nested Assertions
+  - name: "Complex Nested Assertions"
+    description: "Advanced nested object validation"
+    request:
+      protocol: "http"
+      method: "POST"
+      url: "https://httpbin.org/post"
+      headers:
+        Content-Type: "application/json"
+      body: |
+        {
+          "user": {
+            "profile": {
+              "personal": {
+                "name": "John Doe",
+                "age": 30,
+                "contacts": {
+                  "email": "john@example.com",
+                  "phones": [
+                    {"type": "home", "number": "555-0101"},
+                    {"type": "work", "number": "555-0102"}
+                  ]
+                }
+              },
+              "preferences": {
+                "notifications": true,
+                "theme": "dark"
+              }
+            }
+          }
+        }
+    assertions:
+      # Deep nested field
+      - type: "json_path"
+        path: "$.json.user.profile.personal.name"
+        expected: "John Doe"
+        message: "Name should be preserved in nested structure"
+      
+      # Array within nested object
+      - type: "json_path"
+        path: "$.json.user.profile.personal.contacts.phones[0].type"
+        expected: "home"
+        message: "First phone should be home type"
+      
+      # Count elements in nested array
+      - type: "json_path"
+        path: "$.json.user.profile.personal.contacts.phones.length"
+        expected: 2
+        message: "Should have 2 phone numbers"
+      
+      # Boolean field assertion
+      - type: "json_path"
+        path: "$.json.user.profile.preferences.notifications"
+        expected: true
+        message: "Notifications should be enabled"
+
+  # Schema-like Validation
+  - name: "Schema-like Validation"
+    description: "Comprehensive object structure validation"
+    request:
+      protocol: "http"
+      method: "GET"
+      url: "https://jsonplaceholder.typicode.com/users/1"
+    assertions:
+      # Required fields validation
+      - type: "json_path"
+        path: "$.id"
+        exists: true
+        message: "ID is required"
+      
+      - type: "json_path"
+        path: "$.name"
+        exists: true
+        message: "Name is required"
+      
+      - type: "json_path"
+        path: "$.email"
+        exists: true
+        message: "Email is required"
+      
+      # Address object structure
+      - type: "json_path"
+        path: "$.address.street"
+        exists: true
+        message: "Address street is required"
+      
+      - type: "json_path"
+        path: "$.address.city"
+        exists: true
+        message: "Address city is required"
+      
+      - type: "json_path"
+        path: "$.address.zipcode"
+        exists: true
+        message: "Address zipcode is required"
+      
+      # Company object structure
+      - type: "json_path"
+        path: "$.company.name"
+        exists: true
+        message: "Company name is required"
+      
+      - type: "json_path"
+        path: "$.company.catchPhrase"
+        exists: true
+        message: "Company catchPhrase is required"
+
+# Global configuration for JSON assertions
+assertion_config:
+  json_path:
+    # Enable strict mode for more precise matching
+    strict_mode: true
+    
+    # Configure null handling
+    null_handling: "strict" # "strict", "lenient", "ignore"
+    
+    # Configure array handling
+    array_handling:
+      empty_arrays_as_null: false
+      preserve_order: true
+    
+    # Configure string matching
+    string_matching:
+      case_sensitive: true
+      trim_whitespace: false

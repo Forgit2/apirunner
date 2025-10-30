@@ -1,0 +1,86 @@
+# POST Request with JSON Example
+# This example demonstrates creating a new user with JSON payload
+
+name: "Create User with JSON"
+description: "Example of POST request with JSON body and response validation"
+tags: ["basic", "post", "json", "crud"]
+
+variables:
+  base_url: "https://jsonplaceholder.typicode.com"
+  user_name: "John Doe"
+  user_email: "john.doe@example.com"
+
+request:
+  protocol: "http"
+  method: "POST"
+  url: "{{base_url}}/users"
+  headers:
+    Content-Type: "application/json"
+    Accept: "application/json"
+    User-Agent: "API-Test-Runner/1.0"
+  body: |
+    {
+      "name": "{{user_name}}",
+      "username": "johndoe",
+      "email": "{{user_email}}",
+      "address": {
+        "street": "Kulas Light",
+        "suite": "Apt. 556",
+        "city": "Gwenborough",
+        "zipcode": "92998-3874",
+        "geo": {
+          "lat": "-37.3159",
+          "lng": "81.1496"
+        }
+      },
+      "phone": "1-770-736-8031 x56442",
+      "website": "hildegard.org",
+      "company": {
+        "name": "Romaguera-Crona",
+        "catchPhrase": "Multi-layered client-server neural-net",
+        "bs": "harness real-time e-markets"
+      }
+    }
+
+assertions:
+  # Verify successful creation
+  - type: "status_code"
+    expected: 201
+    message: "Should return 201 Created"
+  
+  # Verify response contains created user data
+  - type: "json_path"
+    path: "$.name"
+    expected: "{{user_name}}"
+    message: "Response should contain the created user name"
+  
+  - type: "json_path"
+    path: "$.email"
+    expected: "{{user_email}}"
+    message: "Response should contain the created user email"
+  
+  # Verify response has ID (indicating successful creation)
+  - type: "json_path"
+    path: "$.id"
+    exists: true
+    message: "Response should contain user ID"
+  
+  # Verify response time
+  - type: "response_time"
+    expected: 2000
+    message: "Should respond within 2 seconds"
+  
+  # Verify content type
+  - type: "header"
+    name: "Content-Type"
+    expected: "application/json; charset=utf-8"
+    message: "Should return JSON content type"
+
+# Extract the created user ID for use in subsequent tests
+variable_extractions:
+  - name: "created_user_id"
+    json_path: "$.id"
+  - name: "created_user_name"
+    json_path: "$.name"
+
+timeout: 30s

@@ -1,0 +1,153 @@
+# CSV Data Source Example
+# This example demonstrates using CSV files as test data sources
+
+name: "CSV Data-Driven User Creation Tests"
+description: "Create multiple users using data from CSV file"
+tags: ["data-driven", "csv", "batch-testing"]
+
+# Data source configuration
+data_source:
+  type: "csv"
+  connection: "data/users.csv"
+  
+  # Optional: Data transformations
+  transformations:
+    - type: "field_mapping"
+      mappings:
+        full_name: "name"
+        email_address: "email"
+    
+    - type: "value_substitution"
+      field: "department"
+      substitutions:
+        "eng": "Engineering"
+        "mkt": "Marketing"
+        "sales": "Sales"
+    
+    - type: "type_conversion"
+      conversions:
+        age: "integer"
+        salary: "float"
+        active: "boolean"
+
+# Template test case that will be executed for each row in CSV
+request:
+  protocol: "http"
+  method: "POST"
+  url: "https://jsonplaceholder.typicode.com/users"
+  headers:
+    Content-Type: "application/json"
+    Accept: "application/json"
+  body: |
+    {
+      "name": "{{name}}",
+      "username": "{{username}}",
+      "email": "{{email}}",
+      "phone": "{{phone}}",
+      "website": "{{website}}",
+      "address": {
+        "street": "{{address_street}}",
+        "city": "{{address_city}}",
+        "zipcode": "{{address_zipcode}}"
+      },
+      "company": {
+        "name": "{{company_name}}",
+        "catchPhrase": "{{company_catchphrase}}"
+      }
+    }
+
+assertions:
+  # Verify successful creation
+  - type: "status_code"
+    expected: 201
+    message: "Should create user successfully"
+  
+  # Verify response contains correct data
+  - type: "json_path"
+    path: "$.name"
+    expected: "{{name}}"
+    message: "Response should contain correct name"
+  
+  - type: "json_path"
+    path: "$.email"
+    expected: "{{email}}"
+    message: "Response should contain correct email"
+  
+  # Verify email format
+  - type: "json_path"
+    path: "$.email"
+    regex: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+    message: "Email should be in valid format"
+  
+  # Verify response time
+  - type: "response_time"
+    expected: 3000
+    message: "Should respond within 3 seconds"
+
+# Extract user ID for potential cleanup
+variable_extractions:
+  - name: "created_user_id"
+    json_path: "$.id"
+
+# Execution configuration
+execution:
+  # Run tests in parallel for better performance
+  mode: "parallel"
+  concurrency: 5
+  
+  # Continue on failures to test all data
+  stop_on_failure: false
+  
+  # Rate limiting to avoid overwhelming the server
+  rate_limit: 10 # requests per second
+
+timeout: 30s
+
+---
+# Example CSV data file content (data/users.csv)
+# This would be in a separate file: data/users.csv
+#
+# name,username,email,phone,website,address_street,address_city,address_zipcode,company_name,company_catchphrase
+# "John Doe",johndoe,john.doe@example.com,555-0101,johndoe.com,"123 Main St","Anytown","12345","Acme Corp","Quality products for everyone"
+# "Jane Smith",janesmith,jane.smith@example.com,555-0102,janesmith.com,"456 Oak Ave","Somewhere","67890","Tech Solutions","Innovation at its finest"
+# "Bob Johnson",bobjohnson,bob.johnson@example.com,555-0103,bobjohnson.com,"789 Pine Rd","Elsewhere","54321","Global Industries","Worldwide excellence"
+# "Alice Brown",alicebrown,alice.brown@example.com,555-0104,alicebrown.com,"321 Elm St","Nowhere","98765","Creative Agency","Bringing ideas to life"
+# "Charlie Wilson",charliewilson,charlie.wilson@example.com,555-0105,charliewilson.com,"654 Maple Dr","Anywhere","13579","Consulting Group","Strategic solutions"
+
+---
+# Alternative: Inline CSV data (for small datasets)
+# You can also define CSV data inline instead of using an external file
+
+name: "Inline CSV Data Example"
+description: "Using inline CSV data for small datasets"
+
+data_source:
+  type: "csv"
+  inline_data: |
+    name,email,role
+    "Admin User",admin@example.com,administrator
+    "Test User",test@example.com,user
+    "Guest User",guest@example.com,guest
+
+request:
+  protocol: "http"
+  method: "POST"
+  url: "https://httpbin.org/post"
+  headers:
+    Content-Type: "application/json"
+  body: |
+    {
+      "name": "{{name}}",
+      "email": "{{email}}",
+      "role": "{{role}}"
+    }
+
+assertions:
+  - type: "status_code"
+    expected: 200
+    message: "Should accept the data"
+  
+  - type: "json_path"
+    path: "$.json.name"
+    expected: "{{name}}"
+    message: "Should echo back the name"

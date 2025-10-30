@@ -1,0 +1,39 @@
+{
+  "id": "test-old-timeout-format",
+  "name": "Test Case with Old Timeout Format",
+  "description": "Test case using u64 timeout format for migration testing",
+  "tags": ["migration", "test"],
+  "protocol": "HTTP",
+  "request": {
+    "protocol": "HTTP",
+    "method": "GET",
+    "url": "https://api.example.com/test",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "body": null,
+    "auth": null
+  },
+  "assertions": [
+    {
+      "assertion_type": "status_code",
+      "expected": 200,
+      "message": "Should return 200 OK"
+    }
+  ],
+  "variable_extractions": null,
+  "dependencies": [],
+  "timeout": 30,
+  "created_at": "2024-01-01T00:00:00Z",
+  "updated_at": "2024-01-01T00:00:00Z",
+  "version": 1,
+  "change_log": [
+    {
+      "version": 1,
+      "timestamp": "2024-01-01T00:00:00Z",
+      "change_type": "Created",
+      "description": "Test case created",
+      "changed_fields": ["*"]
+    }
+  ]
+}

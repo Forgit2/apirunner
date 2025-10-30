@@ -1,0 +1,401 @@
+# User Registration Workflow Example
+# This example demonstrates a complete user registration flow with multiple steps
+
+name: "User Registration Complete Workflow"
+description: "Test the complete user registration process including validation, creation, and verification"
+tags: ["workflow", "registration", "multi-step", "integration"]
+
+# Global variables for the workflow
+variables:
+  base_url: "https://api.example.com"
+  test_email: "test.user.{{timestamp}}@example.com"
+  test_username: "testuser{{timestamp}}"
+  test_password: "SecurePassword123!"
+  timestamp: "{{current_timestamp}}"
+
+# Workflow steps
+steps:
+  # Step 1: Check if email is available
+  - name: "Check Email Availability"
+    description: "Verify that the test email is not already registered"
+    
+    request:
+      protocol: "http"
+      method: "GET"
+      url: "{{base_url}}/users/check-email"
+      headers:
+        Accept: "application/json"
+        Content-Type: "application/json"
+      query_parameters:
+        email: "{{test_email}}"
+    
+    assertions:
+      - type: "status_code"
+        expected: 200
+        message: "Email availability check should succeed"
+      
+      - type: "json_path"
+        path: "$.available"
+        expected: true
+        message: "Email should be available for registration"
+    
+    variable_extractions:
+      - name: "email_available"
+        json_path: "$.available"
+
+  # Step 2: Check if username is available
+  - name: "Check Username Availability"
+    description: "Verify that the test username is not already taken"
+    
+    request:
+      protocol: "http"
+      method: "GET"
+      url: "{{base_url}}/users/check-username"
+      headers:
+        Accept: "application/json"
+      query_parameters:
+        username: "{{test_username}}"
+    
+    assertions:
+      - type: "status_code"
+        expected: 200
+        message: "Username availability check should succeed"
+      
+      - type: "json_path"
+        path: "$.available"
+        expected: true
+        message: "Username should be available for registration"
+
+  # Step 3: Register the user
+  - name: "Register New User"
+    description: "Create a new user account with the validated email and username"
+    
+    request:
+      protocol: "http"
+      method: "POST"
+      url: "{{base_url}}/users/register"
+      headers:
+        Accept: "application/json"
+        Content-Type: "application/json"
+      body: |
+        {
+          "email": "{{test_email}}",
+          "username": "{{test_username}}",
+          "password": "{{test_password}}",
+          "firstName": "Test",
+          "lastName": "User",
+          "acceptTerms": true,
+          "subscribeNewsletter": false
+        }
+    
+    assertions:
+      - type: "status_code"
+        expected: 201
+        message: "User registration should succeed with 201 Created"
+      
+      - type: "json_path"
+        path: "$.id"
+        exists: true
+        message: "Response should contain user ID"
+      
+      - type: "json_path"
+        path: "$.email"
+        expected: "{{test_email}}"
+        message: "Response should contain the registered email"
+      
+      - type: "json_path"
+        path: "$.username"
+        expected: "{{test_username}}"
+        message: "Response should contain the registered username"
+      
+      - type: "json_path"
+        path: "$.status"
+        expected: "pending_verification"
+        message: "User status should be pending verification"
+      
+      - type: "json_path"
+        path: "$.createdAt"
+        exists: true
+        message: "Response should contain creation timestamp"
+      
+      # Ensure sensitive data is not returned
+      - type: "json_path"
+        path: "$.password"
+        exists: false
+        message: "Password should not be returned in response"
+    
+    variable_extractions:
+      - name: "user_id"
+        json_path: "$.id"
+        description: "Extract the new user's ID"
+      
+      - name: "verification_token"
+        json_path: "$.verificationToken"
+        description: "Extract verification token for email confirmation"
+
+  # Step 4: Verify that user appears in user list
+  - name: "Verify User in List"
+    description: "Check that the newly created user appears in the user list"
+    
+    request:
+      protocol: "http"
+      method: "GET"
+      url: "{{base_url}}/users"
+      headers:
+        Accept: "application/json"
+      query_parameters:
+        search: "{{test_email}}"
+        limit: 10
+    
+    assertions:
+      - type: "status_code"
+        expected: 200
+        message: "User list retrieval should succeed"
+      
+      - type: "json_path"
+        path: "$.users[?(@.id == {{user_id}})].email"
+        expected: "{{test_email}}"
+        message: "New user should appear in search results"
+
+  # Step 5: Attempt login before verification (should fail)
+  - name: "Login Before Verification"
+    description: "Attempt to login with unverified account (should fail)"
+    
+    request:
+      protocol: "http"
+      method: "POST"
+      url: "{{base_url}}/auth/login"
+      headers:
+        Accept: "application/json"
+        Content-Type: "application/json"
+      body: |
+        {
+          "email": "{{test_email}}",
+          "password": "{{test_password}}"
+        }
+    
+    assertions:
+      - type: "status_code"
+        expected: 403
+        message: "Login should fail for unverified account"
+      
+      - type: "json_path"
+        path: "$.error"
+        expected: "account_not_verified"
+        message: "Should return account not verified error"
+
+  # Step 6: Verify email address
+  - name: "Verify Email Address"
+    description: "Verify the user's email address using the verification token"
+    
+    request:
+      protocol: "http"
+      method: "POST"
+      url: "{{base_url}}/users/verify-email"
+      headers:
+        Accept: "application/json"
+        Content-Type: "application/json"
+      body: |
+        {
+          "token": "{{verification_token}}",
+          "userId": {{user_id}}
+        }
+    
+    assertions:
+      - type: "status_code"
+        expected: 200
+        message: "Email verification should succeed"
+      
+      - type: "json_path"
+        path: "$.verified"
+        expected: true
+        message: "Response should confirm verification"
+      
+      - type: "json_path"
+        path: "$.status"
+        expected: "active"
+        message: "User status should be updated to active"
+
+  # Step 7: Login after verification (should succeed)
+  - name: "Login After Verification"
+    description: "Login with verified account (should succeed)"
+    
+    request:
+      protocol: "http"
+      method: "POST"
+      url: "{{base_url}}/auth/login"
+      headers:
+        Accept: "application/json"
+        Content-Type: "application/json"
+      body: |
+        {
+          "email": "{{test_email}}",
+          "password": "{{test_password}}"
+        }
+    
+    assertions:
+      - type: "status_code"
+        expected: 200
+        message: "Login should succeed for verified account"
+      
+      - type: "json_path"
+        path: "$.accessToken"
+        exists: true
+        message: "Response should contain access token"
+      
+      - type: "json_path"
+        path: "$.refreshToken"
+        exists: true
+        message: "Response should contain refresh token"
+      
+      - type: "json_path"
+        path: "$.user.id"
+        expected: "{{user_id}}"
+        message: "Response should contain correct user ID"
+      
+      - type: "json_path"
+        path: "$.user.status"
+        expected: "active"
+        message: "User status should be active"
+    
+    variable_extractions:
+      - name: "access_token"
+        json_path: "$.accessToken"
+        description: "Extract access token for authenticated requests"
+      
+      - name: "refresh_token"
+        json_path: "$.refreshToken"
+        description: "Extract refresh token"
+
+  # Step 8: Access protected resource
+  - name: "Access User Profile"
+    description: "Access the user's profile using the access token"
+    
+    request:
+      protocol: "http"
+      method: "GET"
+      url: "{{base_url}}/users/{{user_id}}/profile"
+      headers:
+        Accept: "application/json"
+        Authorization: "Bearer {{access_token}}"
+    
+    assertions:
+      - type: "status_code"
+        expected: 200
+        message: "Profile access should succeed with valid token"
+      
+      - type: "json_path"
+        path: "$.id"
+        expected: "{{user_id}}"
+        message: "Profile should contain correct user ID"
+      
+      - type: "json_path"
+        path: "$.email"
+        expected: "{{test_email}}"
+        message: "Profile should contain correct email"
+
+  # Step 9: Update user profile
+  - name: "Update User Profile"
+    description: "Update the user's profile information"
+    
+    request:
+      protocol: "http"
+      method: "PUT"
+      url: "{{base_url}}/users/{{user_id}}/profile"
+      headers:
+        Accept: "application/json"
+        Content-Type: "application/json"
+        Authorization: "Bearer {{access_token}}"
+      body: |
+        {
+          "firstName": "Updated",
+          "lastName": "Name",
+          "bio": "This is my updated bio",
+          "preferences": {
+            "theme": "dark",
+            "notifications": true
+          }
+        }
+    
+    assertions:
+      - type: "status_code"
+        expected: 200
+        message: "Profile update should succeed"
+      
+      - type: "json_path"
+        path: "$.firstName"
+        expected: "Updated"
+        message: "First name should be updated"
+      
+      - type: "json_path"
+        path: "$.lastName"
+        expected: "Name"
+        message: "Last name should be updated"
+
+# Cleanup step (runs even if previous steps fail)
+cleanup:
+  - name: "Delete Test User"
+    description: "Clean up by deleting the test user"
+    
+    request:
+      protocol: "http"
+      method: "DELETE"
+      url: "{{base_url}}/users/{{user_id}}"
+      headers:
+        Authorization: "Bearer {{access_token}}"
+    
+    assertions:
+      - type: "status_code"
+        expected: [200, 204, 404]  # 404 is acceptable if user was already deleted
+        message: "User deletion should succeed or user should not exist"
+
+# Cross-system validations
+cross_system_validations:
+  # Verify user was created in database
+  - type: "database"
+    name: "Verify User in Database"
+    connection: "postgresql://{{db_user}}:{{db_password}}@{{db_host}}/{{db_name}}"
+    query: "SELECT id, email, status FROM users WHERE id = {{user_id}}"
+    assertions:
+      - type: "row_count"
+        expected: 1
+        message: "User should exist in database"
+      
+      - type: "column_value"
+        column: "email"
+        expected: "{{test_email}}"
+        message: "Database should contain correct email"
+      
+      - type: "column_value"
+        column: "status"
+        expected: "active"
+        message: "Database should show user as active"
+
+  # Verify welcome email was sent
+  - type: "message_queue"
+    name: "Verify Welcome Email Queued"
+    connection: "amqp://{{rabbitmq_host}}:{{rabbitmq_port}}"
+    queue: "email.welcome"
+    timeout: 10000
+    assertions:
+      - type: "message_count"
+        expected: 1
+        message: "Welcome email should be queued"
+      
+      - type: "message_content"
+        json_path: "$.recipient"
+        expected: "{{test_email}}"
+        message: "Welcome email should be sent to correct recipient"
+
+# Execution configuration
+execution:
+  mode: "serial"  # Steps must run in order
+  stop_on_failure: true
+  timeout: 300s  # 5 minutes total timeout
+  retry_failed_steps: false
+
+# Reporting configuration
+reporting:
+  include_request_response: true
+  include_variables: true
+  include_timing: true
